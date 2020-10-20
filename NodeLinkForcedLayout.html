@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="utf-8">
+<head>
+    <meta charset="UTF-8">
+    <title>Interaction in D3</title>
+
+</head>
+<script src="https://d3js.org/d3.v6.js" charset="UTF-8"></script>
+<body>
+<h1> Node Link - Forced Layout</h1>
+
+<br>
+<br>
+
+
+<script>
+
+    //source https://www.d3-graph-gallery.com/graph/arc_highlight.html
+    // source https://observablehq.com/@d3/force-directed-graph
+     var margin = {top: 20, right: 80, bottom: 30, left: 50};
+     var width = 800 - margin.left - margin.right;
+     var height = 400 - margin.top - margin.bottom;
+     const svg = d3.select("body")
+         .append("svg")
+         .attr("viewBox", [0, 0, width, height]);
+
+    d3.csv("soc-firm-hi-tech.csv")
+        .then((data) => {
+            var nod =[];
+            data.forEach(function (d) {
+                if(!nod.includes(d["source"]))
+                    nod.push(d["source"]);
+                if(!nod.includes(d["target"]))
+                  nod.push(d["target"]);
+            });
+            const links = data.map(d => {return {source : Number(d.source), target : Number(d.target), value: Number(d.value)};});
+            const nodes = nod.map(d => {return {id : Number(d), name : d};});
+            const simulation = d3.forceSimulation(nodes)
+                .force("link", d3.forceLink(links).id(d => d.id))
+                .force("charge", d3.forceManyBody())
+                .force("center", d3.forceCenter(width / 2, height / 2));
+
+           var link = svg.append("g")
+                .attr("stroke", "#000")
+                .attr("stroke-opacity", 0.6)
+                .selectAll("line")
+                .data(links)
+                .join("line")
+                .attr("stroke-width", d => Math.sqrt(d.value));
+
+            var node = svg.append("g")
+                .attr("stroke", "#000")
+                .attr("stroke-width", 1.2)
+                .selectAll("circle")
+                .data(nodes)
+                .join("circle")
+                .attr("r", 5)
+                .attr("fill", "lightgrey")
+                .call(drag(simulation));
+
+            node.append("text")
+                .attr("dy", 4)
+                .attr("dx", -15)
+                .attr("stroke", "#000")
+                .attr("stroke-opacity", 0.6)
+                .text(d => d.id);
+
+            node.append("title")
+                .text(d => d.id);
+            node
+                .on('mouseover', function (event, d) {
+
+                    console.log(d);
+                    node.attr('fill', "white");
+                    node.attr("stroke-width", "0.5");
+                    d3.select(this).attr('fill', '#69b3b2');
+                    // Highlight the connections
+                    link
+                        .attr('stroke', function (link_d) {return link_d.source.id === d.id || link_d.target.id === d.id ? '#69b3b2' : '#b8b8b8';})
+                        .attr('stroke-width', function (link_d) { return link_d.source.id === d.id || link_d.target.id === d.id ? 4 : 1;});
+                })
+                .on('mouseout', function () {
+                    // console.log(d);
+                    node.attr('fill', "lightgrey");
+                    node.attr("stroke-width", 1.2);
+                    link
+                        .attr('stroke', 'black')
+                        .attr('stroke-width', '1');
+                });
+
+            simulation.on("tick", () => {
+                link
+                    .attr("x1", d => d.source.x)
+                    .attr("y1", d => d.source.y)
+                    .attr("x2", d => d.target.x)
+                    .attr("y2", d => d.target.y);
+
+                node
+                    .attr("cx", d => d.x)
+                    .attr("cy", d => d.y);
+
+            });
+
+            function drag(simulation) {
+                    function dragstarted(event) {
+                        if (!event.active) simulation.alphaTarget(0.3).restart();
+                        event.subject.fx = event.subject.x;
+                        event.subject.fy = event.subject.y;
+                    }
+
+                    function dragged(event) {
+                        event.subject.fx = event.x;
+                        event.subject.fy = event.y;
+                    }
+
+                    function dragended(event) {
+                        if (!event.active) simulation.alphaTarget(0);
+                        event.subject.fx = null;
+                        event.subject.fy = null;
+                    }
+
+                    return d3.drag()
+                        .on("start", dragstarted)
+                        .on("drag", dragged)
+                        .on("end", dragended);
+                }
+        })
+        .catch((error) => {
+            console.error(error);
+        });
+</script>
+
+</body>
+</html>
